@@ -1,3 +1,9 @@
+/*
+  EEPROMAnything.h - EEPROM Library for Cloudino Platform.
+  Created by Javier Solis, javier.solis@infotec.mx, softjei@gmail.com, July 8, 2015
+  Released into the public domain.
+*/
+
 #include <Arduino.h>  // for type definitions
 
 template <class T> int EEPROM_clean(int ee, const T& value)
@@ -23,11 +29,14 @@ int EEPROM_clean(int ee)
     return i;
 }
 
-template <class T> int EEPROM_write(int ee, const T& value)
+template <class T> int EEPROM_write(int ee, const T& value, int ext=0)
 {
-    EEPROM.begin(sizeof(value)+ee);
+    EEPROM.begin(sizeof(value)+ee+ext);
     const byte* p = (const byte*)(const void*)&value;
     unsigned int i;
+
+    //Serial.print("ee:"+String(ee)+" "+String(sizeof(value)));
+    
     for (i = 0; i < sizeof(value); i++)
           EEPROM.write(ee++, *p++);
     EEPROM.commit();
@@ -45,3 +54,25 @@ template <class T> int EEPROM_read(int ee, T& value)
     EEPROM.end();   
     return i;
 }
+
+void EEPROM_read(int off, char *p, int size)
+{
+    EEPROM.begin(off+size);
+    unsigned int i;
+    for (i = 0; i < size; i++)
+          *p++ = EEPROM.read(off++);
+    EEPROM.end();   
+}
+
+void  EEPROM_write(int off, const char *p, int size)
+{
+    //Serial.print("off:"+String(off)+" "+String(size));
+    EEPROM.begin(off+size);
+    unsigned int i;
+    for (i = 0; i < size; i++)
+           EEPROM.write(off++,*p++);
+    EEPROM.commit();
+    EEPROM.end();  
+}
+
+

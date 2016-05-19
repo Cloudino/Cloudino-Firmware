@@ -1,3 +1,9 @@
+/*
+  OrionConnector.h - Orion Context Broker Connector for Cloudino Platform.
+  Created by Javier Solis, javier.solis@infotec.mx, softjei@gmail.com, July 8, 2015
+  Released into the public domain.
+*/
+
 #ifndef ORIONCONNECTOR_H
 #define ORIONCONNECTOR_H
 

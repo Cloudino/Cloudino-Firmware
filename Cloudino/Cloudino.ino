@@ -1,20 +1,46 @@
+/*
+  Cloudino.ino - Library for Cloudino Platform.
+  Created by Javier Solis, javier.solis@infotec.mx, softjei@gmail.com, July 8, 2015
+  Released into the public domain.
+*/
+
+#define CDINO_VERSION "0.9.8"
+
 #define CDINO_UPLOADER
 #define CDINO_CONNECTOR
 #define OCB_CONNECTOR
 #define MQTT_CONNECTOR
-#define COAP_CONNECTOR
-#define BLYNK_CONNECTOR
+//#define COAP_CONNECTOR
+//#define BLYNK_CONNECTOR
+#define JS_SUPPORT
+#define HTTP_UPDATE
+#define CAPTIVE_PORTAL
 
-#include <ESP8266WiFi.h>
+#ifdef HTTP_UPDATE
+#define CDINO_UPDURL F("http://cloudino.io/firmware/cloudino/esp-12/Cloudino.bin")
+#define CDINO_VERSIONPATH F("/firmware/cloudino/esp-12/version.txt")
+#endif
+
 #include <EEPROM.h>
+#include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
-//#include <ESP8266httpUpdate.h>
 //#include <ArduinoJson.h>
-#include "WebServer.h"
 #include "CloudinoConf.h"
+config_t configuration;
+#include "EEPROMAnything.h"
+
 #ifdef CDINO_UPLOADER
 #include "CloudinoUploader.h"
 #endif
+
+#ifdef JS_SUPPORT
+#include "TinyJS.h"
+#include "TinyJS_Functions.h"
+#include "JSTimer.h"
+CTinyJS *js = new CTinyJS();
+Timer *timer= new Timer();
+#endif
+
 #include "SMessageProc.h"
 #include "CloudConnector.h"
 #ifdef CDINO_CONNECTOR
@@ -32,14 +58,36 @@
 #include "BLYNKConnector.h"
 #endif
 
-ADC_MODE(ADC_VCC);
+//ADC_MODE(ADC_VCC);
 
-WebServer webserver(80);
+
+
 #ifdef CDINO_UPLOADER
 CloudinoUploader uploader(9494);
 #endif
 MessageProc proc;
 CloudConnector *connect;
+
+#ifdef JS_SUPPORT
+void callBack(const String funct)
+{
+  js->execute(funct);
+  //js->blockExecute(funct);
+}
+
+void onPostMessage(String topic,String message)
+{
+  //Serial.println(topic+"->"+message);
+  CScriptVarLink t = js->evaluateComplex("Cloudino._tmp");
+  CScriptVar *v=t.var;
+  if(v)
+  {
+    v->setString(message);  
+  }
+  String f="Cloudino._on."+topic+"(Cloudino._tmp);";
+  js->execute(f);  
+}
+#endif
 
 #include "CloudinoWeb.h"
 
@@ -56,6 +104,7 @@ void onLog(String log)
 
 void setup() {
   //WiFi.mode(WIFI_AP_STA);
+  //WiFi.enableAP(true);
   initEEPROMConfig();
 #ifdef CDINO_UPLOADER
   uploader.begin();  
@@ -63,22 +112,26 @@ void setup() {
   proc.onMessage(onMessage);
   proc.onLog(onLog);
   initWebServer();
+
+#ifdef JS_SUPPORT
+  timer->setGlobalCallBack(callBack);
+  registerFunctions(js,timer,&proc);
+  proc.onServerMessage(onPostMessage);
+#endif
 }
 
-void loop() {
-#ifdef CDINO_UPLOADER  
+void loop() { 
   if(connect && connect->isUploading())
   {
     connect->loop();
     return;
   }
+#ifdef CDINO_UPLOADER   
   uploader.handleClient();  
   if(!uploader.isUploading())
 #endif  
   {
-    chechConnection();
-    
-    webserver.handleClient();
+    loopWebServer();
     proc.handleMessages();
     
     if(wifiConnected && connect)connect->loop();
@@ -111,5 +164,9 @@ void loop() {
 #endif        
       }    
     }
+
+#ifdef JS_SUPPORT
+    timer->loop();
+#endif  
   }
 }

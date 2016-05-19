@@ -1,3 +1,8 @@
+/*
+  CloudUploder.h - Uploader for Cloudino Platform.
+  Created by Javier Solis, javier.solis@infotec.mx, softjei@gmail.com, July 8, 2015
+  Released into the public domain.
+*/
 
 #ifndef CLOUDINO_UPLOADER_H
 #define CLOUDINO_UPLOADER_H
@@ -8,10 +13,6 @@
 
 #ifndef UPL_PORT
 #define UPL_PORT 9494
-#endif
-
-#ifndef RST_PIN
-#define RST_PIN 16
 #endif
 
 class CloudinoUploader

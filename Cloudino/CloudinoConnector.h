@@ -1,5 +1,14 @@
+/*
+  Cloudinoonnector.h - Connector for Cloudino Platform.
+  Created by Javier Solis, javier.solis@infotec.mx, softjei@gmail.com, July 8, 2015
+  Released into the public domain.
+*/
+
 #ifndef CLOUDINOCONNECTOR_H
 #define CLOUDINOCONNECTOR_H
+
+#include "CloudinoUploader.h"
+//#include <WiFiClientSecure.h>
 
 class CloudinoConnector : public CloudConnector
 {
@@ -7,13 +16,14 @@ private:
   boolean uploading=false;
   long speed;
 
+  //WiFiClientSecure client;
   WiFiClient client;
 
   boolean waitClient()
   {
     unsigned long time=millis();
-    while(!client.available() && millis()-time<1000){delay(1);}
-    return client.available();
+    while(client.available()==0 && millis()-time<1000){delay(1);}
+    return client.available()>0;
   }
   
   bool connect()
@@ -100,37 +110,6 @@ public:
     return client.connected();
   }
 
-  
-  void postSerial(String topic,String data)
-  {
-      //Serial.println(topic);
-      //Serial.println(data);
-      if(topic=="$CDINOUPDT")
-      {
-        uploading=true;
-        speed=atol(data.c_str());
-        Serial.end();
-        digitalWrite(RST_PIN, LOW);   // turn the LED on (LOW is the voltage level)
-        delay(50);              // wait for a second
-        digitalWrite(RST_PIN, HIGH);    // turn the LED off by making the voltage HIGH
-        delay(50);
-        Serial.begin(speed);
-        uploading=true;
-        return;
-      }
-    
-      Serial.print(SEP);
-      Serial.print(MSEP);
-      Serial.print(topic.length());  
-      Serial.print(SEP);  
-      Serial.print(topic);    
-      //Serial.print(SEP);
-      Serial.print(SSEP);
-      Serial.print(data.length());  
-      Serial.print(SEP);
-      Serial.print(data);     
-  }
-
   void WebMessages()
   {
     if(client.available())
@@ -144,6 +123,7 @@ public:
           if(d==MSEP)
           {
             uint8_t x=client.parseInt();
+            //Serial.println(x);
             if(waitClient())
             {
               if(x>0 && client.read()==SEP)
@@ -154,14 +134,15 @@ public:
                 //Serial.println(topic);
                 if(waitClient() && client.read()==SSEP)
                 {
-                  uint8_t y=client.parseInt();
+                  uint16_t y=client.parseInt();
+                  //Serial.println(y);
                   if(waitClient() && client.read()==SEP)
                   {
                     char msg[y+1];
                     client.readBytes(msg, y);
                     msg[y]=0;                 //cerrar el string   
                     //Serial.println(msg);
-                    postSerial(topic,msg);
+                    post(topic,msg);
                   }
                 }
               }
@@ -171,19 +152,60 @@ public:
       }
     }        
   }
+
+  /**
+   * Post Message to Arduino
+   */
+  void post(String topic, String data)
+  {
+    //Serial.println(topic);
+    //Serial.println(data);
+#ifdef JS_SUPPORT    
+    if(topic=="$CDINOJSCMD")
+    {
+       String ret=js->evaluate(data);
+       onMessage("$CDINOJSRSP",ret);
+       return;
+    }else if(topic=="$CDINOJSINIT")
+    {
+       String script=data;
+       int s=script.length();
+       configuration.js_size=s+1;
+       EEPROM_write(0,configuration,configuration.js_size);  
+       EEPROM_write(sizeof(configuration), script.c_str(), s+1);       
+       js->evaluate("reset();");
+       js->execute(script);
+       return;
+    }else 
+#endif    
+    if(topic=="$CDINOUPDT")
+    {
+      uploading=true;
+      speed=atol(data.c_str());
+      Serial.end();
+      digitalWrite(configuration.arduino_gpio, LOW);   // turn the LED on (LOW is the voltage level)
+      delay(50);              // wait for a second
+      digitalWrite(configuration.arduino_gpio, HIGH);    // turn the LED off by making the voltage HIGH
+      delay(50);
+      Serial.begin(speed);
+      uploading=true;
+      return;
+    }
+    _proc->post(topic,data);
+  }
   
   void loop()
   {
     if(!uploading && connect())
     {
       WebMessages();
-    }       
+    }
 
     if(uploading && client)
     {
       if(client.connected())
       {
-        while(Serial.available()) client.write(Serial.read());
+        while(Serial.available()) client.print((char)Serial.read());
         while(client.available()) Serial.write(client.read());
       }else
       {
@@ -197,7 +219,6 @@ public:
       Serial.end();
       Serial.begin(SERIAL_SPEED);
     }
-     
   }
 
   boolean isUploading()
@@ -212,5 +233,5 @@ public:
 
 protected:
   unsigned long time=millis();
-}; 
+};
 #endif

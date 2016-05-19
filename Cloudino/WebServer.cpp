@@ -1,7 +1,14 @@
+/*
+  WebServer.cpp - WebServer Library for Cloudino Platform.
+  Created by Javier Solis, javier.solis@infotec.mx, softjei@gmail.com, July 8, 2015
+  Released into the public domain.
+*/
+
 #include <Arduino.h>
 #include "WiFiServer.h"
 #include "WiFiClient.h"
 #include "WebServer.h"
+#include <libb64/cencode.h>
 
 // #define DEBUG
 #define DEBUG_OUTPUT Serial
@@ -45,6 +52,43 @@ WebServer::~WebServer()
 
 void WebServer::begin() {
   _server.begin();
+}
+
+bool WebServer::authenticate(const char * username, const char * password)
+{
+  if(_autorization.length()>0)
+  {
+    String authReq = _autorization;
+    if(authReq.startsWith("Basic")){
+      authReq = authReq.substring(6);
+      authReq.trim();
+      char toencodeLen = strlen(username)+strlen(password)+1;
+      char *toencode = new char[toencodeLen + 1];
+      if(toencode == NULL){
+        return false;
+      }
+      char *encoded = new char[base64_encode_expected_len(toencodeLen)+1];
+      if(encoded == NULL){
+        delete[] toencode;
+        return false;
+      }
+      sprintf(toencode, "%s:%s", username, password);
+      if(base64_encode_chars(toencode, toencodeLen, encoded) > 0 && authReq.equals(encoded)){
+        delete[] toencode;
+        delete[] encoded;
+        return true;
+      }
+      delete[] toencode;
+      delete[] encoded;
+    }
+  }
+  return false;
+}
+
+void WebServer::requestAuthentication(){
+  print("HTTP/1.1 401 Access Denied\r\n\
+WWW-Authenticate: Basic realm=\"Cloudino\"\r\n\
+Content-Length: 0\r\n\r\n");
 }
 
 

@@ -1,15 +1,23 @@
+/*
+  CloudUploder.cpp - Uploader for Cloudino Platform.
+  Created by Javier Solis, javier.solis@infotec.mx, softjei@gmail.com, July 8, 2015
+  Released into the public domain.
+*/
 #include <Arduino.h>
 #include "WiFiServer.h"
 #include "WiFiClient.h"
 #include "CloudinoUploader.h"
+#include "CloudinoConf.h"
+
+extern config_t configuration;
 
 void CloudinoUploader::begin()
 {
     Serial.begin(SERIAL_SPEED);  
-    pinMode(RST_PIN, OUTPUT);  
-    digitalWrite(RST_PIN, HIGH);  
+    pinMode(configuration.arduino_gpio, OUTPUT);  
+    digitalWrite(configuration.arduino_gpio, HIGH);  
     _uplSevr.begin();
-    _uplSevr.setNoDelay(true);    
+    //_uplSevr.setNoDelay(true);    
 }
 
 void CloudinoUploader::handleClient()
@@ -49,9 +57,9 @@ void CloudinoUploader::handleClient()
         }
       }
       Serial.end();
-      digitalWrite(RST_PIN, LOW);   // turn the LED on (LOW is the voltage level)
+      digitalWrite(configuration.arduino_gpio, LOW);   // turn the LED on (LOW is the voltage level)
       delay(50);              // wait for a second
-      digitalWrite(RST_PIN, HIGH);    // turn the LED off by making the voltage HIGH
+      digitalWrite(configuration.arduino_gpio, HIGH);    // turn the LED off by making the voltage HIGH
       delay(50);
       Serial.begin(speed);
       uploading=true;

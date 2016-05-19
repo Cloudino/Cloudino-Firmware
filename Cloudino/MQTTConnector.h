@@ -1,3 +1,9 @@
+/*
+  MQTTConnector.h - MQTTConnector for Cloudino Platform.
+  Created by Javier Solis, javier.solis@infotec.mx, softjei@gmail.com, July 8, 2015
+  Released into the public domain.
+*/
+
 #ifndef MQTTCONNECTOR_H
 #define MQTTCONNECTOR_H
 
@@ -15,7 +21,7 @@ private:
     if(!ret)
     {
       //Serial.println("c1");
-      if (client.connect(MQTT::Connect("Cloudino").set_auth(_config->mqtt_user, _config->mqtt_passwd))) {
+      if (client.connect("Cloudino",_config->mqtt_user,_config->mqtt_passwd)) {
         //Serial.println("c2");
         if(strlen(_config->mqtt_sub_path)>0)
           client.subscribe(_config->mqtt_sub_path);
@@ -33,23 +39,14 @@ public:
   {
       __proc=&proc;
       //Serial.println("ini");
-      client.set_server(config.mqtt_dns, config.mqtt_port);
-      client.set_callback([](const MQTT::Publish& pub) {
-        String tp=pub.topic();
+      client.setServer(config.mqtt_dns, config.mqtt_port);
+      client.setCallback([](char* topic, uint8_t* payload, unsigned int length) {
+        String tp=String(topic);
+        char data[length+1];
+        for(int i=0;i<length;i++)data[i]=payload[i];
         tp=tp.substring(tp.lastIndexOf("/")+1);
-        __proc->post(tp,pub.payload_string());
+        __proc->post(tp,data);
       });
-/*      
-    client.init(config.mqtt_dns, config.mqtt_port, [](char* topic, byte* payload, unsigned int length){
-      char data[length+1];
-      for(int i=0;i<length;i++)data[i]=payload[i];
-      data[length]=0;
-      String tp=String(topic);
-      tp=tp.substring(tp.lastIndexOf("/")+1);
-      //Serial.println("callback:"+tp);
-      __proc->post(tp,data);
-    });
-*/    
     //Serial.println("ini 2");
     connect();
   }
