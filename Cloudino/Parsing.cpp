@@ -75,37 +75,49 @@ bool WebServer::_parseRequest(WiFiClient& client) {
   DEBUG_OUTPUT.println(searchStr);
 #endif
 
-  String formData;
+  _autorization="";
+  //parse headers
+  //uint32_t contentLength = 0;  
+  while(client.available()){
+    req = client.readStringUntil('\r');
+    client.readStringUntil('\n');
+    if (req == "") break; //no moar headers
+    int headerDiv = req.indexOf(':');
+    if (headerDiv == -1){
+      break;
+    }
+    String headerName = req.substring(0, headerDiv);
+    String headerValue = req.substring(headerDiv + 2);
+    if (headerName == "Authorization"){
+      _autorization=headerValue;
+    }
+    //if (headerName == "Content-Type"){
+      //
+    //} else if (headerName == "Content-Length"){
+      //contentLength = headerValue.toInt();
+    //}
+  }
+
+  //String formData;
   // below is needed only when POST type request
   if (method == HTTP_POST || method == HTTP_PUT || method == HTTP_PATCH || method == HTTP_DELETE){
-    String boundaryStr;
-    String headerName;
-    String headerValue;
-    uint32_t contentLength = 0;
-    //parse headers
-    while(1){
-      req = client.readStringUntil('\r');
-      client.readStringUntil('\n');
-      if (req == "") break;//no moar headers
-      int headerDiv = req.indexOf(':');
-      if (headerDiv == -1){
-        break;
-      }
-      headerName = req.substring(0, headerDiv);
-      headerValue = req.substring(headerDiv + 2);
-      if (headerName == "Content-Type"){
-        //
-      } else if (headerName == "Content-Length"){
-        contentLength = headerValue.toInt();
-      }
-    }
-  
+    //String boundaryStr;
+    
+    //if (searchStr != "") searchStr += '&';
+    //searchStr += client.readStringUntil('\r');
+    //client.readStringUntil('\n');
 
-    if (searchStr != "") searchStr += '&';
-    searchStr += client.readStringUntil('\r');
-    client.readStringUntil('\n');
+    int tries = 100;//100ms max wait
+    while(!client.available() && tries--)delay(1);
+    size_t plainLen = client.available();
+    char *plainBuf = (char*)malloc(plainLen+1);
+    client.readBytes(plainBuf, plainLen);
+    plainBuf[plainLen] = '\0';
+    _plain = plainBuf;
+    free(plainBuf);
     _parseArguments(searchStr);
   } else {
+    _plain="";
     _parseArguments(searchStr);
   }
   client.flush();

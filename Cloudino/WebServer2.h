@@ -1,50 +1,14 @@
-/*
-  WebServer.h - WebServer Library for Cloudino Platform.
-  Created by Javier Solis, javier.solis@infotec.mx, softjei@gmail.com, July 8, 2015
-  Released into the public domain.
-*/
-
 #ifndef WEBSERVER_H
 #define WEBSERVER_H
+#include "ESP8266WebServer.h"
 
-#include <functional>
-
-enum HTTPMethod { HTTP_ANY, HTTP_GET, HTTP_POST, HTTP_PUT, HTTP_PATCH, HTTP_DELETE };
-
-#define HTTP_DOWNLOAD_UNIT_SIZE 1460
-#define HTTP_MAX_DATA_WAIT 1000 //ms to wait for the client to send the request
-#define HTTP_MAX_CLOSE_WAIT 2000 //ms to wait for the client to close the connection
-
-class WebServer
+class WebServer : public ESP8266WebServer 
 {
-public:
-  WebServer(int port = 80);
-  ~WebServer();
-
-  void begin();
-  void handleClient();
-
-  bool authenticate(const char * username, const char * password);
-  void requestAuthentication();  
-
-  typedef std::function<void(void)> THandlerFunction;
-  void on(const char* uri, THandlerFunction handler);
-  void on(const char* uri, HTTPMethod method, THandlerFunction fn);
-  void onNotFound(THandlerFunction fn);  //called when handler is not assigned
-
-  String uri() { return _currentUri; }
-  HTTPMethod method() { return _currentMethod; }
-  WiFiClient client() { return _currentClient; }
-  
-  String arg(const char* name);   // get request argument value by name
-  String arg(int i);              // get request argument value by number
-  String argName(int i);          // get request argument name by number
-  int args();                     // get arguments count
-  bool hasArg(const char* name);  // check if argument exists
-  
-  void sendHeader(String name, String value, bool first = false);
-  
-  //****************** Adding methods ***************************
+    public:
+        WebServer(int port):ESP8266WebServer(port){};
+ //****************** Adding methods ***************************
+  String _plain=""; 
+ 
   void printHead(int code, const char* content_type = NULL)
   {
     String response = "HTTP/1.1 ";
@@ -140,45 +104,6 @@ public:
     _currentClient.stop();
     //_currentClient.stop();
   }
-
-  void setAutorization(String user, String passwd)
-  {
-    _user=user;
-    _passwd=passwd;
-  }
-
-  String _plain="";
-  
-//****************************************  
-protected:
-  void _handleRequest();
-  bool _parseRequest(WiFiClient& client);
-  void _parseArguments(String data);
-  static const char* _responseCodeToString(int code);
-  struct RequestHandler;
-  struct RequestArgument {
-    String key;
-    String value;
-  };
-
-  WiFiServer  _server;
-  WiFiClient  _currentClient;
-  HTTPMethod  _currentMethod;
-  String      _currentUri;
-  String      _autorization;  
-  String      _user;    
-  String      _passwd;   
-
-  size_t           _currentArgCount;
-  RequestArgument* _currentArgs;
-
-  String           _responseHeaders;
-
-  RequestHandler*  _firstHandler;
-  RequestHandler*  _lastHandler;
-  THandlerFunction _notFoundHandler;
-
+    private:
 };
-
 #endif
-
