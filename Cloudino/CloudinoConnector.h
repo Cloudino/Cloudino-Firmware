@@ -8,7 +8,7 @@
 #define CLOUDINOCONNECTOR_H
 
 #include "CloudinoUploader.h"
-//#include <WiFiClientSecure.h>
+#include <WiFiClientSecure.h>
 
 #define ARDUINO_FIRMWARE_PATH "/update.bin"
 
@@ -323,13 +323,9 @@ public:
        return;
     }else if(topic=="$CDINOJSINIT")
     {
-       String script=data;
-       int s=script.length();
-       configuration.js_size=s+1;
-       EEPROM_write(0,configuration,configuration.js_size);  
-       EEPROM_write(sizeof(configuration), script.c_str(), s+1);       
        js->evaluate("reset();");
-       js->execute(script);
+       js->execute(data);    
+       fileWrite(ARDUINO_SCRIPT_PATH,data);
        return;
     }else 
 #endif    

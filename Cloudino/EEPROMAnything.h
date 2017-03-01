@@ -55,6 +55,7 @@ template <class T> int EEPROM_read(int ee, T& value)
     return i;
 }
 
+/*
 void EEPROM_read(int off, char *p, int size)
 {
     EEPROM.begin(off+size);
@@ -73,6 +74,31 @@ void  EEPROM_write(int off, const char *p, int size)
            EEPROM.write(off++,*p++);
     EEPROM.commit();
     EEPROM.end();  
+}
+*/
+
+String fileWrite(String name, String content)
+{
+    File file = SPIFFS.open(name, "w");
+    if(file)file.print(content);
+    if(file)file.close();  
+}
+
+String fileRead(String name){
+  //read file from SPIFFS and store it as a String variable
+  File file = SPIFFS.open(name.c_str(), "r");
+  if (!file) {
+    return "";
+  }
+  else {    
+    int fileSize = file.size();
+    char buf[fileSize+1];
+    file.read((uint8_t *)buf, fileSize);
+    file.close();
+    buf[fileSize]=0;
+    return String(buf);
+  }
+  
 }
 
 

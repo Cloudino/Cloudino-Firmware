@@ -7,10 +7,11 @@
 #ifndef CLOUDINO_CONF_H
 #define CLOUDINO_CONF_H
 
-#define CDINO_VERSION F("0.9.14")
+#define CDINO_VERSION F("0.9.15")
 
+#define CDINO_WEBSERVER
 #define CDINO_ARDUINO
-#define CDINO_UPLOADER
+//#define CDINO_UPLOADER
 #define CDINO_CONNECTOR
 #define OCB_CONNECTOR
 #define MQTT_CONNECTOR
@@ -23,9 +24,11 @@
 //#define RCSWITCH_SUPPORT
 
 #ifdef HTTP_UPDATE
-#define CDINO_UPDURL F("http://cloudino.cc/firmware/cloudino/esp-12/Cloudino.bin")
-#define CDINO_VERSIONPATH F("/firmware/cloudino/esp-12/version.txt")
+#define CDINO_UPDURL F("http://cloudino.io/firmware/cloudino/esp-12/Cloudino.bin")
+#define CDINO_VERSIONURL F("http://cloudino.io/firmware/cloudino/esp-12/version.txt")
 #endif
+
+#define ARDUINO_SCRIPT_PATH "/script.js"
 
 #define UDP_PORT 10234
 
@@ -44,15 +47,16 @@ struct config_t
   boolean cdino_active;
   char cdino_dns[51];
   uint16 cdino_port;
-  char cdino_token[51];
   char cdino_authtoken[51];
 #endif
 #ifdef OCB_CONNECTOR
   boolean ocb_active;
   char ocb_dns[51];
   uint16 ocb_port;
-  char ocb_token[51];
-  char ocb_devid[51];
+  char ocb_auth[51];
+  char ocb_user[41];
+  char ocb_pwd[20];
+  char ocb_devid[41];
 #endif
 #ifdef MQTT_CONNECTOR        
   boolean mqtt_active;
@@ -69,10 +73,6 @@ struct config_t
   uint16 blynk_port;
   char blynk_auth[51];  
 #endif
-//#ifdef JS_SUPPORT
-  boolean js_active;
-  uint16 js_size;
-//#endif
 };
 
 #endif

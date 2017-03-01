@@ -27,28 +27,77 @@ class OrionConnector : public CloudConnector
 {
 public:
 
-  OrionConnector(MessageProc &proc,config_t &config): CloudConnector(proc,config){}
+  OrionConnector(MessageProc &proc,config_t &config): CloudConnector(proc,config)
+  {
+    tupd=0;
+  }
 
   String getName()
   {
     return "OCB";
   }
 
-  void onContent(String content)
+  void onContent(String url, String content_type, String content)
   {
-      //Serial.print("onMessage2");
+      boolean exist=true;
+      {
+          //Serial.print("onMessage:"+content);      
+          HTTPClient http;
+          http.begin("http://"+String(_config->ocb_dns)+":"+String(_config->ocb_port)+url);
+          http.addHeader("Content-Type",content_type);   
+          //http.addHeader("Accept","application/json");  
+          http.addHeader("Content-Length",String(content.length()));
+          if(token.length()>0)http.addHeader("X-Auth-Token",token);    
+          int httpCode = http.PUT(content);
+          if(httpCode > 0) 
+          {
+              if(httpCode != HTTP_CODE_OK) {
+                  String cont=http.getString();
+                  //Entity not exist
+                  if(cont.indexOf("NotFound")>-1)
+                  {
+                      exist=false;
+                  }              
+              }
+          }
+          http.end();    
+      }
+
+      if(!exist)
+      {
+          String create=fileRead("/ocb_create.json");
+          if(create.length()>0)
+          {
+              HTTPClient http;
+              //create="{\"id\": \""+String(_config->ocb_devid)+"\"}";
+              http.begin("http://"+String(_config->ocb_dns)+":"+String(_config->ocb_port)+"/v2/entities");
+              http.addHeader("Content-Type","application/json");   
+              http.addHeader("Content-Length",String(content.length()));
+              if(token.length()>0)http.addHeader("X-Auth-Token",token);    
+              int httpCode = http.POST(create);
+              if(httpCode > 0) 
+              {
+                  if(httpCode == HTTP_CODE_OK) {
+                      String cont=http.getString();
+                  }
+              }
+              http.end();           
+          }
+      }
+
+/*    
       WiFiClient client;
       if (!client.connect(_config->ocb_dns, _config->ocb_port)) {
         //Serial.println("connection failed");//todo:callback
         return;
       }
 
-      client.print("POST /ngsi10/contextEntities/"+String(_config->ocb_devid)+" HTTP/1.1\n");
+      client.print("PUT "+url+" HTTP/1.1\n");
       client.print("Host: "+String(_config->ocb_dns)+":"+String(_config->ocb_dns)+"\n");
       client.print("Content-Length: "+String(content.length())+"\n");
       client.print("Accept: application/json\n");
-      client.print("X-Auth-Token: "+String(_config->ocb_token)+"\n");
-      client.print("Content-Type: application/json\n");
+      if(token.length()>0)client.print("X-Auth-Token: "+token+"\n");
+      client.print("Content-Type: "+content_type+"\n");
       client.print("\n");
       client.print(content);
       delay(10);
@@ -56,21 +105,45 @@ public:
       while(client.available()){
         String line = client.readStringUntil('\r');
         //Serial.print(line);
-        //TODO:
       }
       client.stop();
       //Serial.print("End");
+*/      
   }  
 
   void onMessage(String topic,String message)
   {
+      //Update Token
+      String user=String(_config->ocb_user);
+      
+      //if(user.length()==0)
+      if(user.length()>0 && (tupd==0 || ((millis()-tupd)>59*60*1000)))
+      {
+        String cont="{\"username\": \""+user+"\", \"password\":\""+String(_config->ocb_pwd)+"\"}";
+        HTTPClient http;
+        //http.begin("https://orion.lab.fiware.org/token");
+        //http.begin("http://cloudino.io/ocbToken.jsp");
+        http.begin(String(_config->ocb_auth));
+        
+        
+        int httpCode = http.POST(cont);
+        if(httpCode > 0) 
+        {
+            if(httpCode == HTTP_CODE_OK) {
+                token=http.getString();
+            }
+        }
+        http.end();         
+        tupd=millis();                
+      }
+    
       if(topic=="$CONTENT")
       {
-        onContent(message);
+        onContent("/v2/entities/"+String(_config->ocb_devid)+"/attrs","application/json",message);
       }else
       {
-        String cnt="{\"attributes\":[{\"name\":\""+topic+"\",\"value\":\""+message+"\"}]}\n";
-        onContent(cnt);
+        String cnt="\""+message+"\"";
+        onContent("/v2/entities/"+String(_config->ocb_devid)+"/attrs/"+topic+"/value","text/plain",cnt);
       }
   }
 
@@ -100,5 +173,7 @@ public:
 
 protected:
 private:
+  String token="";
+  unsigned long tupd=0;
 }; 
 #endif

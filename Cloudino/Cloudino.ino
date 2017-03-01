@@ -159,7 +159,10 @@ void setup() {
 #endif
   proc.onMessage(onMessage);
   proc.onLog(onLog);
+
+#ifdef CDINO_WEBSERVER   
   initWebServer();
+#endif  
 
 #ifdef JS_SUPPORT
   timer->setGlobalCallBack(callBack);
@@ -182,7 +185,9 @@ void loop() {
 #endif  
 #endif
   {
+#ifdef CDINO_WEBSERVER      
     loopWebServer();
+#endif    
     proc.handleMessages();
     
     if(wifiConnected && connect)connect->loop();

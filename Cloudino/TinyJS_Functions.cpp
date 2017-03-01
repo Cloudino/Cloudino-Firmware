@@ -33,9 +33,6 @@
 
 #include "TinyJS_Functions.h"
 #include <ESP8266WiFi.h>
-#ifdef HTTPS_SUPPORT
-#include <WiFiClientSecure.h>
-#endif
 #include <ESP8266HTTPClient.h>
 #include <math.h>
 #ifdef RCSWITCH_SUPPORT
@@ -937,8 +934,8 @@ void js_require(CScriptVar *v, void *userdata) {
 #ifdef HTTPS_SUPPORT    
     js->addNative(F("function HTTP.sendSSL(host,port,content)"), scHTTPSSend, js); // Get DHT11 Values
 #endif    
-    js->addNative(F("function HTTP.send(host,port,content)"), scHTTPSend, js); // Get DHT11 Values
-    js->addNative(F("function HTTP.get(url)"), scHTTPURL, js); // Get DHT11 Values
+    js->addNative(F("function HTTP.send(host,port,content)"), scHTTPSend, js); // Get http contect
+    js->addNative(F("function HTTP.get(url)"), scHTTPURL, js); // Get http contet
   }else if(name=="Math")
   {
     js->addNative(F("function Math.abs(a)"), scMathAbs, 0);

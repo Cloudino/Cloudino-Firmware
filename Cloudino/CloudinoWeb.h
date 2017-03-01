@@ -166,8 +166,14 @@ void resetEEPROM()
     strcpy(configuration.blynk_dns,"blynk-cloud.com");
     configuration.blynk_port=8442;
 #endif    
+#ifdef OCB_CONNECTOR     
+    strcpy(configuration.ocb_dns,"orion.lab.fiware.org");
+    configuration.ocb_port=1026;
+    strcpy(configuration.ocb_auth,"https://orion.lab.fiware.org/token");
+#endif 
 
-    EEPROM_write(0,configuration,configuration.js_size);  
+    EEPROM_write(0,configuration);  
+    SPIFFS.format();
 }
 
 String toStringID(unsigned long x)
@@ -188,7 +194,7 @@ void resetWIFI()
     WiFi.disconnect();     
     configuration.auth_user[0]=0;
     configuration.auth_passwd[0]=0;
-    EEPROM_write(0,configuration,configuration.js_size);
+    EEPROM_write(0,configuration);
 }
 
 void setConnectorActive(String con,bool value)
@@ -522,7 +528,7 @@ void handleSegMDNS()
     {
       strcpy(configuration.mdns_dns,webserver.arg(F("mdns_dns")).c_str());
       configuration.mdns_ttl=(int)webserver.arg(F("mdns_ttl")).toInt();
-      EEPROM_write(0,configuration,configuration.js_size);
+      EEPROM_write(0,configuration);
       wifiConnected=false;
       msg="Changes Applied";
     }
@@ -559,16 +565,7 @@ void handleSegJScript()
     ret+="</header>\n";
     ret+="<section>\n";
     ret+=F("<textarea id=\"js_script\" style=\"font-family: monospace; width: 100%; height:250px;\" autofocus>");
-    int s=configuration.js_size;
-    if(s>10000)s=0;
-    //ret+=String(s));
-    if(s>0)
-    {
-        char *txt=(char*)malloc(s);    
-        EEPROM_read(sizeof(configuration), txt, s);
-        ret+=txt;  
-        free(txt);  
-    }
+    ret+=fileRead(ARDUINO_SCRIPT_PATH);
     ret+="</textarea>\n";
     ret+=F("<span><input type=\"button\" onclick=\"cdino.getHtml('jsinit',null,'POST','['+ encodeURIComponent(js_script.value));\" value=\"Save\"></span>\n");
     ret+="</section>\n";
@@ -607,7 +604,7 @@ void handleSegCloudino()
       configuration.cdino_port=(int)webserver.arg("cdino_port").toInt();
       //ret+="<p>Changes will apply next restarting.</p>\n");
       setConnectorActive("cdino",(bool)webserver.arg("cdino_active").toInt());
-      EEPROM_write(0,configuration,configuration.js_size);
+      EEPROM_write(0,configuration);
       msg="Changes Applied";
     }
     ret+="<section>\n";
@@ -643,12 +640,17 @@ void handleSegOCB()
     if(webserver.hasArg("ocb_active"))
     {
       strcpy(configuration.ocb_dns,webserver.arg("ocb_dns").c_str());
-      strcpy(configuration.ocb_token,webserver.arg("ocb_token").c_str());
+      strcpy(configuration.ocb_auth,webserver.arg("ocb_auth").c_str());
+      strcpy(configuration.ocb_user,webserver.arg("ocb_user").c_str());
+      strcpy(configuration.ocb_pwd,webserver.arg("ocb_pwd").c_str());
       strcpy(configuration.ocb_devid,webserver.arg("ocb_devid").c_str());
+
+      fileWrite("/ocb_create.json",webserver.arg("ocb_create"));
+      
       configuration.ocb_port=(int)webserver.arg("ocb_port").toInt();
       //ret+="<p>Changes will apply next restarting.</p>\n");
       setConnectorActive("ocb",(bool)webserver.arg("ocb_active").toInt());
-      EEPROM_write(0,configuration,configuration.js_size);
+      EEPROM_write(0,configuration);
       msg="Changes Applied";
     }
     ret+="<section>\n";
@@ -658,10 +660,15 @@ void handleSegOCB()
     ret+=addtrrad(F("Active"),"ocb_active",configuration.ocb_active);
     ret+=addtrinp(F("DNS"),"text","ocb_dns",configuration.ocb_dns,0,50);
     ret+=addtrinp(F("Port"),"number","ocb_port",String(configuration.ocb_port),0,15);
-    ret+=addtrinp(F("User Token"),"text","ocb_token",configuration.ocb_token,0,50);
-    ret+=addtrinp(F("Entity ID"),"text","ocb_devid",configuration.ocb_devid,0,50);
+    ret+=addtrinp(F("Auth URL"),"text","ocb_auth",configuration.ocb_auth,0,50);
+    ret+=addtrinp(F("User"),"text","ocb_user",configuration.ocb_user,0,40);
+    ret+=addtrinp(F("Password"),"password","ocb_pwd",configuration.ocb_pwd,0,19);
+    ret+=addtrinp(F("Entity ID"),"text","ocb_devid",configuration.ocb_devid,0,40);
+    ret+=F("<tr><td>Entity Definition:</td><td><textarea id=\"ocb_create\" style=\"font-family: monospace; width: 100%; height:200px;\" autofocus>");
+    ret+=fileRead("/ocb_create.json");
+    ret+=F("</textarea></td></tr>");
     ret+="</table>\n";
-    ret+=addbutton(F("Save"),F("cdino.seg('srv_ocb'+cdino.getForm());"));
+    ret+=addbutton(F("Save"),F("cdino.seg('srv_ocb'+cdino.getForm()+'&ocb_create='+encodeURIComponent(ocb_create.value));"));
     ret+="</form>\n";
     ret+=alert(msg);
     ret+="</section>\n";
@@ -688,7 +695,7 @@ void handleSegMQTT()
       strcpy(configuration.mqtt_pub_path,webserver.arg("mqtt_pub_path").c_str());
       strcpy(configuration.mqtt_sub_path,webserver.arg("mqtt_sub_path").c_str());
       setConnectorActive("mqtt",(bool)webserver.arg("mqtt_active").toInt());
-      EEPROM_write(0,configuration,configuration.js_size);
+      EEPROM_write(0,configuration);
       msg="Changes Applied";
     }
     ret+="<section>\n";
@@ -731,7 +738,7 @@ void handleSegBlynk()
       configuration.blynk_port=(int)webserver.arg("blynk_port").toInt();
       strcpy(configuration.blynk_auth,webserver.arg("blynk_auth").c_str());
       setConnectorActive("blynk",(bool)webserver.arg("blynk_active").toInt());
-      EEPROM_write(0,configuration,configuration.js_size);
+      EEPROM_write(0,configuration);
       msg="Changes Applied";
     }
     
@@ -775,11 +782,12 @@ void handleJSInit()
    String script=webserver.arg("plain");    //webserver._plain;
    int s=script.length();
    if(s>0 && script.charAt(0)=='[')script=script.substring(1);
-   configuration.js_size=s+1;
-   EEPROM_write(0,configuration,configuration.js_size);  
-   EEPROM_write(sizeof(configuration), script.c_str(), s+1);
+
    js->evaluate("reset();");
    js->execute(script);
+   
+   fileWrite(ARDUINO_SCRIPT_PATH,script);
+   
    webserver.send( 200, "text/html; charset=utf-8", "OK");
 }
 
@@ -797,53 +805,23 @@ void handleJS()
 #ifdef HTTP_UPDATE
 String chk_upd()
 {
-  int port=80;
-  String host="cloudino.cc";
-  String path=CDINO_VERSIONPATH;
-  
-  WiFiClient client;
-  if (!client.connect(host.c_str(), port)) {
-    return "Error: connection failed";
-  }  
-
-  // This will send the request to the server
-  client.print(String("GET ") + path + " HTTP/1.1\r\n" + "Host: " + host + "\r\n" + "Connection: close\r\n\r\n");
-
-  int responseCode=0;
-  //Read the Headers
-  while (client.connected()) {
-    String line = client.readStringUntil('\n');
-    if (line == "\r") {
-      //Serial.println("headers received");
-      break;
-    }else
-    {
-      if(line.startsWith("HTTP/"))
+  String version;
+  HTTPClient http;
+  http.begin(CDINO_VERSIONURL);
+  int httpCode = http.GET();
+  if(httpCode > 0) 
+  {
+      if(httpCode == HTTP_CODE_OK) {
+          version=http.getString();
+      }else
       {
-         int n=line.indexOf(' ');
-         if(n>-1)
-         {
-            responseCode=line.substring(n+1,line.indexOf(' ',n+1)).toInt();
-         }
+        return String()+F("Error: Bad response code:")+String(httpCode);
       }
-      //Serial.println("head:"+line);
-    }
   }
-
-  if(responseCode!=200)
-  {
-      return String()+F("Error: Bad response code:")+String(responseCode);
-  }
+  http.end();  
   
-  if(client.connected())
-  {
-    //if(client.available()>0){
-      String line = client.readStringUntil('\r');
-      if(line==CDINO_VERSION)return F("There isn't new version of Cloudino Firmware");
-      else return String()+F("New version (")+line+F(") of Cloudino Firmware is available");
-    //}
-  }
-  return "Error: No update information found...";
+  if(version==CDINO_VERSION)return F("There isn't new version of Cloudino Firmware");
+  else return String()+F("New version (")+version+F(") of Cloudino Firmware is available");
 }
 
 String update(String url)
@@ -1019,7 +997,7 @@ void handleSegSys()
     {
       strcpy(configuration.auth_user,webserver.arg("auth_user").c_str());
       strcpy(configuration.auth_passwd,webserver.arg("auth_passwd").c_str());
-      EEPROM_write(0,configuration,configuration.js_size);
+      EEPROM_write(0,configuration);
       msg="Changes Applied";
     }
 
@@ -1028,7 +1006,7 @@ void handleSegSys()
     {
       configuration.arduino_active=webserver.arg("arduino_active").toInt();
       configuration.arduino_gpio=webserver.arg("arduino_gpio").toInt();
-      EEPROM_write(0,configuration,configuration.js_size);
+      EEPROM_write(0,configuration);
       msg="Changes Applied";
     }    
     
@@ -1139,15 +1117,8 @@ void loopWebServer()
     {
         //Serial.println("JavaScript Code Initialized...");
         jsInited=true;
-        int s=configuration.js_size;
-        if(s>10000)s=0;
-        if(s>0)
-        {
-            char *txt=(char*)malloc(s);    
-            EEPROM_read(sizeof(configuration), txt, s);
-            js->execute(txt);
-            free(txt);  
-        }
+        String code=fileRead(ARDUINO_SCRIPT_PATH);
+        js->execute(code);
     }
 #endif    
 
