@@ -42,7 +42,7 @@ Timer *timer= new Timer();
 #include "MQTTConnector.h"
 #endif
 #ifdef BLYNK_CONNECTOR
-#include "BLYNKConnector.h"
+#include "BlynkConnector.h"
 #endif
 
 //ADC_MODE(ADC_VCC);
